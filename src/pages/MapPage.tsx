@@ -42,6 +42,7 @@ export function MapPage() {
     subtitle: "Portugal, Spain, France, Italy, North Africa",
   });
   const [mapReady, setMapReady] = useState(false);
+  const [mapInitError, setMapInitError] = useState<string | null>(null);
   const [pageBooted, setPageBooted] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const skipNextStyleSyncRef = useRef(true);
@@ -63,6 +64,13 @@ export function MapPage() {
       return;
     }
 
+    if (!mapToken) {
+      setMapInitError("Missing Mapbox token. Add VITE_MAPBOX_TOKEN to .env.");
+      setMapReady(false);
+      return;
+    }
+
+    setMapInitError(null);
     const map = createMap(mapContainerRef.current, mapToken, mapStyle);
     mapRef.current = map;
 
@@ -73,6 +81,10 @@ export function MapPage() {
     };
 
     onceMapEvent(map, "load", handleLoad);
+    map.on("error", () => {
+      setMapInitError("Map failed to load. Verify your Mapbox token and network access.");
+      setMapReady(false);
+    });
 
     return () => {
       map.remove();
@@ -204,6 +216,8 @@ export function MapPage() {
     setSearchOpen(false);
   };
 
+  const shouldShowBootOverlay = !pageBooted || (!mapReady && !mapInitError);
+
   return (
     <main className="map-shell relative h-screen w-screen overflow-hidden bg-[#171717] text-white">
       <div ref={mapContainerRef} className="absolute inset-0" aria-label="Interactive dark map" />
@@ -283,12 +297,25 @@ export function MapPage() {
         </div>
       </div>
 
+      {mapInitError ? (
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center px-6">
+          <div className="pointer-events-auto w-full max-w-[560px] rounded-[24px] border border-white/15 bg-[#0a0a0a]/95 p-6 shadow-panel backdrop-blur-panel">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-ink-400">Map setup required</p>
+            <p className="mt-3 text-base text-white">{mapInitError}</p>
+            <p className="mt-2 text-sm text-ink-300">
+              Create a <code className="rounded bg-white/10 px-1.5 py-0.5 text-white">.env</code> file in the project root with
+              <code className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-white">VITE_MAPBOX_TOKEN=your_token_here</code>.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div
         className={[
           "pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-[#090909] transition duration-500",
-          pageBooted && mapReady ? "opacity-0" : "opacity-100",
+          shouldShowBootOverlay ? "opacity-100" : "opacity-0",
         ].join(" ")}
-        aria-hidden={pageBooted && mapReady}
+        aria-hidden={!shouldShowBootOverlay}
       >
         <div className="flex flex-col items-center gap-4">
           <div className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-2 backdrop-blur-panel">

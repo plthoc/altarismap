@@ -86,6 +86,13 @@ export function SearchOverlay({
       return;
     }
 
+    if (!mapToken) {
+      setSearching(false);
+      setResults([]);
+      setSearchError("Search is unavailable until the Mapbox token is configured.");
+      return;
+    }
+
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
       setSearching(true);
